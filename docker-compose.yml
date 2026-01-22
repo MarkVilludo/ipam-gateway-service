@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  gateway:
+    build: .
+    container_name: ipam-gateway
+    ports:
+      - "9001:9000"
+    env_file:
+      - .env
+    networks:
+      - gateway-net
+
+networks:
+  gateway-net:
