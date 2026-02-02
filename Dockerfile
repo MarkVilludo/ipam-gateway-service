@@ -1,34 +1,10 @@
-FROM php:8.2-fpm-alpine
+FROM nginx:alpine
 
-# System dependencies
-RUN apk add --no-cache \
-    bash \
-    git \
-    curl \
-    libzip-dev \
-    oniguruma-dev
+# Copy nginx gateway configuration
+COPY nginx/gateway.conf /etc/nginx/conf.d/default.conf
 
-# PHP extensions
-RUN docker-php-ext-install \
-    pdo \
-    pdo_mysql \
-    mbstring \
-    zip
+# Expose port 80
+EXPOSE 80
 
-# Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-WORKDIR /var/www
-
-# Copy app
-COPY . .
-
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader
-
-# Permissions
-RUN chown -R www-data:www-data /var/www
-
-EXPOSE 9000
-
-CMD ["php-fpm"]
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

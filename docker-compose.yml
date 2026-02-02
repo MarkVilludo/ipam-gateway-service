@@ -1,15 +1,161 @@
-version: "3.9"
-
 services:
   gateway:
-    build: .
-    container_name: ipam-gateway
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ipam_gateway
     ports:
-      - "9001:9000"
-    env_file:
-      - .env
+      - "8000:80"
+    depends_on:
+      auth:
+        condition: service_healthy
+      ip:
+        condition: service_healthy
+      frontend:
+        condition: service_started
     networks:
-      - gateway-net
+      - ipam_net
+
+  auth:
+    build:
+      context: ../auth-service/site
+      dockerfile: DockerFile
+    container_name: ipam_auth
+    environment:
+      APP_KEY: base64:2fl+Ktvk6veR+nXbHkFjnLkEQQddwwUFHlQ0qXd/lBo=
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: mysql
+      DB_HOST: auth-db
+      DB_PORT: 3306
+      DB_DATABASE: auth_db
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      # Auth and ip must share the same JWT_SECRET (set in .env for production)
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+      JWT_TTL: 60
+      IP_SERVICE_URL: http://ip:80
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    networks:
+      - ipam_net
+    expose:
+      - "80"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "-s",
+          "-o",
+          "/dev/null",
+          "http://localhost:80/health",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 90s
+
+  ip:
+    build:
+      context: ../ip-management-service/site
+      dockerfile: DockerFile
+    container_name: ipam_ip
+    environment:
+      APP_KEY: base64:2fl+Ktvk6veR+nXbHkFjnLkEQQddwwUFHlQ0qXd/lBo=
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: mysql
+      DB_HOST: ip-db
+      DB_PORT: 3306
+      DB_DATABASE: ip_db
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      # Must match auth service so tokens issued by auth validate here
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+      JWT_TTL: 60
+    depends_on:
+      ip-db:
+        condition: service_healthy
+    networks:
+      - ipam_net
+    expose:
+      - "80"
+    healthcheck:
+      test:
+        ["CMD", "curl", "-f", "-s", "-o", "/dev/null", "http://localhost:80/up"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 90s
+
+  auth-db:
+    image: mysql:8.0
+    container_name: auth_db
+    ports:
+      - "127.0.0.1:3306:3306"
+    environment:
+      MYSQL_DATABASE: auth_db
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - auth_data:/var/lib/mysql
+    networks:
+      - ipam_net
+    healthcheck:
+      test:
+        ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  ip-db:
+    image: mysql:8.0
+    container_name: ip_db
+    ports:
+      - "127.0.0.1:3307:3306"
+    environment:
+      MYSQL_DATABASE: ip_db
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - ip_data:/var/lib/mysql
+    networks:
+      - ipam_net
+    healthcheck:
+      test:
+        ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ../ipam-frontend
+      dockerfile: Dockerfile
+    container_name: ipam_frontend
+    networks:
+      - ipam_net
+    expose:
+      - "80"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:80",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  auth_data:
+  ip_data:
 
 networks:
-  gateway-net:
+  ipam_net:
