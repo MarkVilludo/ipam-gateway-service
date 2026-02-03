@@ -5,35 +5,31 @@ Nginx gateway and Docker Compose orchestration for the IPAM stack (auth, IP mana
 ## Quick start
 
 ```bash
-cp .env.example .env   # optional: set JWT_SECRET
 docker compose up --build
 ```
 
+To set a custom JWT secret (e.g. for production), copy `.env.example` to `.env` and set `JWT_SECRET`. See [README-JWT.md](README-JWT.md).
+
 - **Frontend**: http://localhost:3000
 - **Gateway**: http://localhost:8000
-- **APIs**: http://localhost:8000/api/auth/\*, http://localhost:8000/api/ip-addresses, etc.
+- **APIs**: http://localhost:8000/api/auth/\*, http://localhost:8000/api/ip/ip-addresses, etc.
 
-## Viewing logs
+## Accessing the application via CLI if needed (when you need to debug the application or run commands inside the container (migrate, seed, etc.)))
 
-Compose **service names** (use these with `docker compose logs <service>`):
-
-| Service name | Container name | Description    |
-| ------------ | -------------- | -------------- |
-| `gateway`    | ipam_gateway   | Nginx gateway  |
-| `auth`       | ipam_auth      | Auth service   |
-| `ip`         | ipam_ip        | IP management  |
-| `frontend`   | ipam_frontend  | Vue frontend   |
-| `auth-db`    | auth_db        | MySQL for auth |
-| `ip-db`      | ip_db          | MySQL for IP   |
-
-Examples:
+Auth service:
 
 ```bash
-docker compose logs auth      # Auth service (not ipam_auth)
-docker compose logs ip
-docker compose logs auth-db
+docker exec -it ipam_auth bash
 ```
 
-If **auth is unhealthy**: check `docker compose logs auth` for DB connection errors, migration failures, or PHP errors. Ensure `auth-db` is healthy first.
+IP management service:
 
-See [README-JWT.md](README-JWT.md) for JWT and 401 troubleshooting.
+```bash
+docker exec -it ipam_ip bash
+```
+
+## Checking the health of the services
+
+```bash
+docker compose ps
+```
