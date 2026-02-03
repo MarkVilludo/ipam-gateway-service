@@ -92,8 +92,8 @@ services:
   auth-db:
     image: mysql:8.0
     container_name: auth_db
-    ports:
-      - "127.0.0.1:3306:3306"
+    # No host port publish — auth connects via Docker network (auth-db:3306).
+    # To connect from host: docker exec -it auth_db mysql -u root -proot
     environment:
       MYSQL_DATABASE: auth_db
       MYSQL_ROOT_PASSWORD: root
@@ -112,8 +112,8 @@ services:
   ip-db:
     image: mysql:8.0
     container_name: ip_db
-    ports:
-      - "127.0.0.1:3307:3306"
+    # No host port publish — ip connects via Docker network (ip-db:3306).
+    # To connect from host: docker exec -it ip_db mysql -u root -proot
     environment:
       MYSQL_DATABASE: ip_db
       MYSQL_ROOT_PASSWORD: root
